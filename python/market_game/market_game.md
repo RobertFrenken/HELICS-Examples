@@ -8,7 +8,7 @@ Each house consumes power in a little different profile, but all consume the sam
 
 ## Market maker
 
-The Market maker federate is the controller.  It sets the price per KWh.   The price is a function of demand.   If demand is below `N*3 kW` the price is set at $0.10/kWh.  N is the number of houses connected. Above that the price rises for the next hour.  The market maker is pretty dumb so the price lags an hours.   The function for the price is a piecewise linear function.    A multiplier `M` is computed as `M=total demand/N`.  The price is a function of `M`.    M<3.0  price is $0.10 per kilowatt-hour.   Above that it begins to rise.   From `3.0<M<6.0` price = 0.1+0.03*(M-3).   From `6.0<M<9.0`  price=0.19+0.1*(M-6.0).  From `9.0<M<13.0`  price=0.49+0.25*(M-9.0).  For M>12.0, price is 1.49+1.0*(M-13.0).   
+The Market maker federate is the controller.  It sets the price per KWh.   The price is a function of demand.   If demand is below `N*3 kW` the price is set at $0.10/kWh.  N is the number of houses connected. Above that the price rises for the next hour.  The market maker is pretty dumb so the price lags an hours.   The function for the price is a piecewise linear function.    A multiplier `M` is computed as `M=total demand/N`.  The price is a function of `M`.    M<3.0  price is $0.10 per kilowatt-hour.   Above that it begins to rise.   From `3.0<M<6.0` price = 0.1+0.03*(M-3).   From `6.0<M<9.0`  price=0.19+0.1*(M-6.0).  From `9.0<M<13.0`  price=0.49+0.25*(M-9.0).  For M>13.0, price is 1.49+1.0*(M-13.0).   
 
 ## The game
 
