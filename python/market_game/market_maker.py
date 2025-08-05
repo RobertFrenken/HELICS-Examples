@@ -57,6 +57,8 @@ class SubFed:
     name:str=""
 
 def compute_new_price(total:float, feds:int)->float:
+    if feds==0:
+        return 0.1
     M=total/feds
     if M<3.0:
         price=0.1
@@ -105,8 +107,9 @@ federate_name="market_maker_fed"
 # create the federate using the federate Info structure
 
 
-broker=h.helicsCreateBroker("zmq","market_maker","--ipv4 -f1")
+broker=h.helicsCreateBroker("zmq","market_maker","--ipv4 --external -f1")
 
+print(f"broker created: address= {h.helicsBrokerGetAddress(broker)}")
 market_maker=h.helicsCreateCombinationFederate(federate_name,fedinfo)
 
 # register the price publication
