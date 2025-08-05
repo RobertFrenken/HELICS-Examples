@@ -49,9 +49,11 @@ class Battery:
 
 def compute_demand(price:float, hour:int, battery_charge:float, demand:list[float])->float:
     #this is where you get to do something interesting
-    
-    #the least interesting thing is just return the current demand
-    return demand[hour]
+    # for the test house do something dumb
+    if battery_charge==0:
+        return demand[hour]+2
+    else:
+        return demand[hour]-2
 
 
 fedinfo = h.helicsCreateFederateInfo()
@@ -61,7 +63,7 @@ h.helicsFederateInfoSetBroker(fedinfo, "localhost")
 h.helicsFederateInfoSetTimeProperty(fedinfo, h.helics_property_time_period, 1.0)
 
 #set to whatever federate name you want
-federate_name="XXXXX"
+federate_name="testA"
 # create the federate using the federate Info structure
 fed=h.helicsCreateCombinationFederate(federate_name,fedinfo)
 

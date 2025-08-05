@@ -1,6 +1,8 @@
 import helics as h
 from dataclasses import dataclass,field
 import json
+import random
+import matplotlib.pyplot as plt
 
 # defining a house federate
 
@@ -18,20 +20,20 @@ class Battery:
         delta=abs(delta)
         if delta>self.energy:
             raise ValueError("requested discharge exceeds current charge level")
-        if delta>5.0:
-            raise ValueError("requested discharge exceeds maximum discharge rate")
+        if delta>10.0:
+            raise ValueError("requested discharge exceeds maximum discharge rate (10)")
         self.energy-=delta
         return self.energy
     
     def charge(self,delta:float)->float:
         """ charge the battery by a given value
-        assumed to be in 1 hour
+        assumed to be in 1 hour increments
         """
         delta=abs(delta)
         if self.energy+delta>20.0:
             raise ValueError("requested charge exceeds maximum capacity")
         if delta>5.0:
-            raise ValueError("requested charge rate exceeds maximum rate")
+            raise ValueError("requested charge rate exceeds maximum rate (5)")
         self.energy+=delta
         return self.energy
     
@@ -48,8 +50,8 @@ class Battery:
 class SubFed:
     battery:Battery=field(default_factory=Battery)
     input:h.HelicsInput=None
-    totalCost:float=0
-    
+    totalCost:float=0.0
+    hourCost:list[float]=field(default_factory=list)
     demand:list[float]=field(default_factory=lambda: [5] * 24)
     consume:list[float]=field(default_factory=list)
     name:str=""
@@ -68,11 +70,35 @@ def compute_new_price(total:float, feds:int)->float:
         price=1.49+1.0*(M-13.0)
     return price
 
+def update_demand(type:str,fed:SubFed):
+    if type=='random':
+        elements=[random.random() for _ in range(24)]
+        mult=120.0/sum(elements)
+        fed.demand=[x*mult for x in elements]
+    elif type=='spike':
+        random_number = random.randint(0, 23)
+        fed.demand=[4] * 24
+        fed.demand[random_number]=28
+    elif type=='dspike':
+        random_number = random.randint(0, 23)
+        fed.demand=[3] * 24
+        fed.demand[random_number]+=24
+        random_number = random.randint(0, 23)
+        fed.demand[random_number]+=24
+    elif type == 'profile1':
+        fed.demand=[2, 1, 1, 1, 2, 4, 6, 8, 9, 7, 5, 4, 3, 4, 5, 7, 9, 12, 10, 7, 5, 4, 2,2]
+    elif type == 'profile_solar':
+        profile=[2, 2, 2, 2, 3, 4, 5, 2, -4, -6, -7, -8, -7, -6, -3, 1, 4, 8, 10, 11, 10, 7, 5, 3]
+        fed.demand=[x*3.0 for x in profile]
+    else:
+        fed.demand=[5] * 24
+        
 fedinfo = h.helicsCreateFederateInfo()
 #depending on the setup this will need to be modified
 h.helicsFederateInfoSetBroker(fedinfo,"localhost")
 
 h.helicsFederateInfoSetTimeProperty(fedinfo, h.helics_property_time_period, 1.0)
+h.helicsFederateInfoSetFlagOption(fedinfo,h.HELICS_FLAG_WAIT_FOR_CURRENT_TIME_UPDATE,True)
 
 #set to whatever federate name you want
 federate_name="market_maker_fed"
@@ -97,17 +123,27 @@ while True:
     res = input("enter i to start initialization: ")
     if res and res[0]=='i':
         break
-
+    if res and res[0]=='q':
+        h.helicsFederateDisconnect(market_maker)
+        h.helicsBrokerDisconnect(broker)
+        quit()
 # Now enter initializing mode iterative
 h.helicsFederateEnterInitializingModeIterative(market_maker)
 
 results=h.helicsQueryBrokerExecute(fedQuery,broker)
 feds=[]
+#demandType='flat'
+#demandType='spike'
+#demandType='dspike'
+#demandType='random'
+demandType='profile_solar'
 for fed in results:
     if fed==federate_name:
         continue
     print(f"fed {index}:{fed}")
     sf=SubFed(name=fed)
+    if demandType !='flat':
+        update_demand(demandType,sf)
     sf.input=h.helicsFederateRegisterSubscription(market_maker,sf.name+"/demand","kWh")
     h.helicsFederateSendCommand(market_maker,sf.name,json.dumps({"demand":sf.demand}))
     feds.append(sf)
@@ -118,28 +154,69 @@ current_price=0.5
 price.publish(current_price)
 h.helicsFederateEnterExecutingMode(market_maker)
 current_time=0
-while current_time<=24:
+cprice=[]
+loads=[]
+while current_time<24:
     total_load=0
-    
-    if current_time>0:
-        hour=int(current_time)
-        for fed in feds:
-            load=h.helicsInputGetDouble(fed.input)
-            if load>fed.demand[hour-1]+5:
-                h.helicsFederateGlobalError(market_maker,120,f"federate {fed.name} listed demand exceeds limits")
-            if load<fed.demand[hour-1]-5:
-                h.helicsFederateGlobalError(market_maker,121,f"federate {fed.name} listed demand invalid")
-            if fed.demand[hour-1]-load>fed.battery.current_charge():
-                h.helicsFederateGlobalError(market_maker,122,f"federate {fed.name} insufficient battery energy")
-            fed.battery.change(load-fed.demand[hour-1])
-            fed.consume.append(load)
-            print(f"hr {hour}: federate {fed.name} using {load} scheduled {fed.demand[hour-1]} battery at {fed.battery.energy} ")
+    hour=int(current_time)
+    for fed in feds:
+        penaltyCost=0
+        load=h.helicsInputGetDouble(fed.input)
+        if load>fed.demand[hour]+5:
+            penaltyCost=20*(load-fed.demand[hour]+5)
+            load=fed.demand[hour]+5
+            print(f"federate {fed.name} listed demand exceeds limits")
+        if load>fed.demand[hour]+(20-fed.battery.current_charge()):
+            penaltyCost=20*(load-fed.demand[hour]+(20-fed.battery.current_charge()))
+            load=fed.demand[hour]+(20-fed.battery.current_charge())
+            print(f"federate {fed.name} listed demand exceeds available battery storage capacity") 
+        if load<fed.demand[hour]-10:
+            penaltyCost=20*(fed.demand[hour]-10-load)
+            load=fed.demand[hour]-10
+            print(f"federate {fed.name} listed demand invalid")
+        if fed.demand[hour-1]-load>fed.battery.current_charge():
+            penaltyCost=20*(fed.demand[hour]-load-fed.battery.current_charge())
+            load=fed.demand[hour]-fed.battery.current_charge()
+            print(f"federate {fed.name} insufficient battery energy")
+        fed.battery.change(load-fed.demand[hour])
+        fed.consume.append(load)
+        fed.hourCost.append(load*current_price)
+        print(f"hr {hour}: federate {fed.name} using {load} scheduled {fed.demand[hour]} battery at {fed.battery.energy} cost={load*current_price}")
         total_load+=load
-    current_price=compute_new_price(total_load,num_feds)
+    loads.append(total_load)
     print(f"hr {hour}: total load {total_load} new  price = {current_price} ")
+    current_price=compute_new_price(total_load,num_feds)
     price.publish(current_price)
+    cprice.append(current_price)
     current_time=market_maker.request_next_step()
     
 h.helicsFederateDisconnect(market_maker)
 
+
+low_fed_cost:float=1000000000000.0
+low_fed=None
+for fed in feds:
+    fed.totalCost=float(sum(fed.hourCost))
+    if fed.totalCost<low_fed_cost:
+        low_fed=fed
+        low_fed_cost=fed.totalCost
+    print(f"fed {fed.name}:total Cost=${fed.totalCost} total consumption={sum(fed.consume)}")
+    
+print (f"the winner is Fed {low_fed.name} total cost=${low_fed_cost}")
 h.helicsBrokerDisconnect(broker)
+
+time= list(range(24))
+
+# Initialise the subplot function using number of rows and columns
+figure, axis = plt.subplots(1, 2)
+
+# For demand
+axis[0].plot(time,loads,color='g',label='load')
+axis[0].set_title("Demand profile")
+
+# For price
+axis[1].plot(time, cprice)
+axis[1].set_title("prices")
+
+# Combine all the operations and display
+plt.show()

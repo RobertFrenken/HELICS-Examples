@@ -4,7 +4,7 @@ The market game example is meant as a test case for a multi-user cosimulation.  
 
 ## House specifications
 
-Each house consumes power in a little different profile, but all consume the same amount of power during a given day.   This is measured in KWh. The total consumption of each house is 120KWh per day averaging 5 kWh per hour.  Each house also has a battery that can store 20kWh.   The battery starts out empty in a day.  The maximum charge/discharge rate of the battery is 5kWh/hr.  The battery can change to any level from 1 hour to the next.   
+Each house consumes power in a little different profile, but all consume the same amount of power during a given day.   This is measured in KWh. The total consumption of each house is 120KWh per day averaging 5 kWh per hour.  Each house also has a battery that can store 20kWh.   The battery starts out empty in a day.  The maximum charge rate of the battery is 5kWh/hr. The maximum discharge rate of the battery is 10kWh/hr.  The battery rate of charge/discharge can change to any level from 1 hour to the next with the limits.  The battery is 100% efficient in charge and discharge.
 
 ## Market maker
 
@@ -18,4 +18,4 @@ Each hour the market maker will send a price for the next hour, Each federate ne
 
 The Market maker will publish a price each time step.   Each house federate subscribes to this price.  Each house federate publishes a consumption.  This continues for 24 steps representing each hour starting at midnight.  Each house is free to define the algorihthm or methods used to adjust the battery charging/discharging and modulate the demand used by the house as a function of price.   The federate also knows the load profile used by the house and the current state of charge of the battery.    
 
-Given it is a game the market maker also generates the demand curves for each federate so it knows the demand curve and will be monitoring the state of charge of the battery for each federate to compute the score at the end of the game.   And ensure no one is cheating.   
+Given it is a game the market maker also generates the demand curves for each federate so it knows the demand curve and will be monitoring the state of charge of the battery for each federate to compute the score at the end of the game.   And ensure no one is cheating.   Penalty costs will be assessed if the returned load is invalid.  Which means it exceeds the battery charge/discharge rates or the available capacity.  The penalty is $10 per kWh exceeding the allowed battery specification.  
