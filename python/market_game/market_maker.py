@@ -204,8 +204,9 @@ for fed in feds:
         low_fed=fed
         low_fed_cost=fed.totalCost
     print(f"fed {fed.name}:total Cost=${fed.totalCost} total consumption={sum(fed.consume)}")
-    
-print (f"the winner is Fed {low_fed.name} total cost=${low_fed_cost}")
+
+if low_fed is not None:
+    print (f"the winner is Fed {low_fed.name} total cost=${low_fed_cost}")
 h.helicsBrokerDisconnect(broker)
 
 time= list(range(24))
