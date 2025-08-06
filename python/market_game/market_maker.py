@@ -96,6 +96,7 @@ def update_demand(type:str,fed:SubFed):
         fed.demand=[5] * 24
         
 fedinfo = h.helicsCreateFederateInfo()
+h.helicsFederateInfoSetCoreType(fedinfo,h.HELICS_CORE_TYPE_ZMQ_SS)
 #depending on the setup this will need to be modified
 h.helicsFederateInfoSetBroker(fedinfo,"localhost")
 
@@ -107,7 +108,7 @@ federate_name="market_maker_fed"
 # create the federate using the federate Info structure
 
 
-broker=h.helicsCreateBroker("zmq","market_maker","--ipv4 --external -f1")
+broker=h.helicsCreateBroker("zmqss","market_maker","--ipv4 -f1")
 
 print(f"broker created: address= {h.helicsBrokerGetAddress(broker)}")
 market_maker=h.helicsCreateCombinationFederate(federate_name,fedinfo)

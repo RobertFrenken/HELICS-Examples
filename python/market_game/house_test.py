@@ -58,7 +58,8 @@ def compute_demand(price:float, hour:int, battery_charge:float, demand:list[floa
 
 fedinfo = h.helicsCreateFederateInfo()
 #depending on the setup this will need to be modified
-h.helicsFederateInfoSetBroker(fedinfo, "localhost")
+h.helicsFederateInfoSetCoreType(fedinfo,h.HELICS_CORE_TYPE_ZMQ_SS)
+h.helicsFederateInfoSetBroker(fedinfo, "tcp://10.251.233.5")
 
 h.helicsFederateInfoSetTimeProperty(fedinfo, h.helics_property_time_period, 1.0)
 
