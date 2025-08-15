@@ -4,48 +4,10 @@ import json
 import random
 import matplotlib.pyplot as plt
 
-# defining a house federate
+from battery import Battery,check_valid,ensure_valid
 
-@dataclass
-class Battery:
-    energy: float=0
-    
-    def current_charge(self)->float:
-        return self.energy
-    
-    def discharge(self,delta:float)->float:
-        """ discharge the battery by a given value
-        assumed to be in 1 hour
-        """
-        delta=abs(delta)
-        if delta>self.energy:
-            raise ValueError("requested discharge exceeds current charge level")
-        if delta>10.0:
-            raise ValueError("requested discharge exceeds maximum discharge rate (10)")
-        self.energy-=delta
-        return self.energy
-    
-    def charge(self,delta:float)->float:
-        """ charge the battery by a given value
-        assumed to be in 1 hour increments
-        """
-        delta=abs(delta)
-        if self.energy+delta>20.0:
-            raise ValueError("requested charge exceeds maximum capacity")
-        if delta>5.0:
-            raise ValueError("requested charge rate exceeds maximum rate (5)")
-        self.energy+=delta
-        return self.energy
-    
-    def change(self, delta:float)->float:
-        """ charge(positive value) or discharge(negative value) the battery by a given value
-        assumed to be in 1 hour
-        """
-        if delta<0.0:
-            return self.discharge(delta)
-        else:
-            return self.charge(delta)
-        
+# defining a house federate
+      
 @dataclass
 class SubFed:
     battery:Battery=field(default_factory=Battery)
@@ -166,22 +128,13 @@ while current_time<24:
     for fed in feds:
         penaltyCost=0
         load=h.helicsInputGetDouble(fed.input)
-        if load>fed.demand[hour]+5:
-            penaltyCost=20*(load-fed.demand[hour]+5)
-            load=fed.demand[hour]+5
-            print(f"federate {fed.name} listed demand exceeds limits")
-        if load>fed.demand[hour]+(20-fed.battery.current_charge()):
-            penaltyCost=20*(load-fed.demand[hour]+(20-fed.battery.current_charge()))
-            load=fed.demand[hour]+(20-fed.battery.current_charge())
-            print(f"federate {fed.name} listed demand exceeds available battery storage capacity") 
-        if load<fed.demand[hour]-10:
-            penaltyCost=20*(fed.demand[hour]-10-load)
-            load=fed.demand[hour]-10
-            print(f"federate {fed.name} listed demand invalid")
-        if fed.demand[hour-1]-load>fed.battery.current_charge():
-            penaltyCost=20*(fed.demand[hour]-load-fed.battery.current_charge())
-            load=fed.demand[hour]-fed.battery.current_charge()
-            print(f"federate {fed.name} insufficient battery energy")
+        warning=check_valid(load,fed.demand[hour], fed.battery)
+        if warning:
+            valid_load=ensure_valid(load,fed.demand[hour], fed.battery)
+            print(f"invalid demand received for fed {fed.name}={load} vs {valid_load} warning={warning}, recalculating with new value and assessing penalty")
+            penaltyCost=20*abs(load-valid_load)
+            load=valid_load
+       
         fed.battery.change(load-fed.demand[hour])
         fed.consume.append(load)
         fed.hourCost.append(load*current_price)
