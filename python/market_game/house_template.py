@@ -62,21 +62,29 @@ class House(ABC):
     def run(self):
         
         while self.current_time<24:
+            #get the current price
             current_price=h.helicsInputGetDouble(self.price)
             self.prices.append(current_price)
-            current_demand=self.demand[int(current_time)]
+            #load the current consumption
+            current_demand=self.demand[int(self.current_time)]
+            # call the user defined consumption calculation method
             computed_demand=self.compute_demand(current_price,int(self.current_time),self.battery.current_charge(),self.demand,self.prices)
+            #check if the computed demand is  valid
             warning=check_valid(computed_demand,current_demand, self.battery)
             if warning:
+                #if it wasn't valid issue a warning and bound it to a the valid range
                 print(f"invalid demand computed={computed_demand} warning={warning}, recalculating with new value")
                 computed_demand=ensure_valid(computed_demand,current_demand, self.battery)
             self.actual_load.append(computed_demand)
+            #update the battery
             self.battery.change(computed_demand-current_demand)
+            #store some data
             self.battery_state.append(self.battery.current_charge())
             self.actual_cost.append(current_price*computed_demand)
-            print(f"hour {int(current_time)}:price={current_price}, house_demand={current_demand}, load={computed_demand}, battery delta= {computed_demand-current_demand} battery charge={battery.current_charge()} cost={computed_demand*current_price}")
+            print(f"hour {int(self.current_time)}:price={current_price}, house_demand={current_demand}, load={computed_demand}, battery delta= {computed_demand-current_demand} battery charge={self.battery.current_charge()} cost={computed_demand*current_price}")
+            #publish the demand and request the next step
             self.demand_pub.publish(computed_demand)
-            current_time=self.federate.request_next_step()
+            self.current_time=self.federate.request_next_step()
     
         print(f"total load={sum(self.actual_load)}, total_cost={sum(self.actual_cost)}")
         self.federate.disconnect()

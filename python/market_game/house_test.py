@@ -1,7 +1,7 @@
-from house_template import HouseTemplate
+from house_template import House
 # defining a house federate
 
-class House(HouseTemplate):
+class TestHouse(House):
     def __init__(self, name: str, connection: str = "localhost"):
         super().__init__(name, connection)
 
@@ -14,7 +14,7 @@ class House(HouseTemplate):
 
 if __name__ == "__main__":
     connection_string="localhost"
-    house=House("TestHouse",connection_string)
+    house=TestHouse("TestHouse",connection_string)
     house.run()
     house.plot_results()
     
