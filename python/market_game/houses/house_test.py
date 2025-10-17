@@ -1,4 +1,6 @@
 from house_template import House
+
+import argparse
 # defining a house federate
 
 class TestHouse(House):
@@ -13,8 +15,12 @@ class TestHouse(House):
             return demand[hour] - 2
 
 if __name__ == "__main__":
-    connection_string="localhost"
-    house=TestHouse("TestHouse",connection_string)
+    
+    parser = argparse.ArgumentParser(description="market game house federate commands")
+    parser.add_argument("--broker", type=str, default="localhost", help="address of the broker")
+
+    args = parser.parse_args()
+    house=TestHouse("TestHouse",args.broker)
     house.run()
     house.plot_results()
     

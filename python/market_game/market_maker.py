@@ -3,6 +3,8 @@ from dataclasses import dataclass,field
 import json
 import random
 import matplotlib.pyplot as plt
+import sys
+import argparse
 
 from battery import Battery,check_valid,ensure_valid
 
@@ -56,7 +58,16 @@ def update_demand(type:str,fed:SubFed):
         fed.demand=[x*3.0 for x in profile]
     else:
         fed.demand=[5] * 24
-        
+   
+   
+parser = argparse.ArgumentParser(description="market maker federate commands")
+parser.add_argument("--auto", action="store_true", default=False, help="run in auto mode")
+parser.add_argument("--autobroker", action="store_true", default=True, help="enable local broker")
+parser.add_argument("--profile", type=str, default="profile1", help="type of load profile to use: flat, spike, dspike, random, profile1, profile_solar")
+
+args = parser.parse_args()
+
+         
 fedinfo = h.helicsCreateFederateInfo()
 h.helicsFederateInfoSetCoreType(fedinfo,h.HELICS_CORE_TYPE_ZMQ_SS)
 #depending on the setup this will need to be modified
@@ -69,10 +80,10 @@ h.helicsFederateInfoSetFlagOption(fedinfo,h.HELICS_FLAG_WAIT_FOR_CURRENT_TIME_UP
 federate_name="market_maker_fed"
 # create the federate using the federate Info structure
 
+if args.autobroker:
+    broker=h.helicsCreateBroker("zmqss","market_maker","--ipv4 -f1")
 
-broker=h.helicsCreateBroker("zmqss","market_maker","--ipv4 -f1")
-
-print(f"broker created: address= {h.helicsBrokerGetAddress(broker)}")
+    print(f"broker created: address= {h.helicsBrokerGetAddress(broker)}")
 market_maker=h.helicsCreateCombinationFederate(federate_name,fedinfo)
 
 # register the price publication
@@ -80,29 +91,39 @@ price=market_maker.register_global_publication("price",h.HELICS_DATA_TYPE_DOUBLE
 
 fedQuery=h.helicsCreateQuery("federation","federates")
 
-while True:
-    results=h.helicsQueryBrokerExecute(fedQuery,broker)
-    index=0
-    for fed in results:
-        print(f"fed {index}:{fed}")
-        index+=1
-    res = input("enter i to start initialization: ")
-    if res and res[0]=='i':
-        break
-    if res and res[0]=='q':
-        h.helicsFederateDisconnect(market_maker)
-        h.helicsBrokerDisconnect(broker)
-        quit()
+if not args.auto:
+    while True:
+        if args.autobroker:
+            results=h.helicsQueryBrokerExecute(fedQuery,broker)
+        else:
+            results=h.helicsQueryExecute(fedQuery,market_maker)
+        index=0
+        for fed in results:
+            print(f"fed {index}:{fed}")
+            index+=1
+        res = input("enter i to start initialization: ")
+        if res and res[0]=='i':
+            break
+        if res and res[0]=='q':
+            h.helicsFederateDisconnect(market_maker)
+            if args.autobroker:
+                h.helicsBrokerDisconnect(broker)
+            quit()
+        
 # Now enter initializing mode iterative
 h.helicsFederateEnterInitializingModeIterative(market_maker)
 
-results=h.helicsQueryBrokerExecute(fedQuery,broker)
+if args.autobroker:
+    results=h.helicsQueryBrokerExecute(fedQuery,broker)
+else:
+    results=h.helicsQueryExecute(fedQuery,market_maker)
 feds=[]
 #demandType='flat'
 #demandType='spike'
 #demandType='dspike'
 #demandType='random'
-demandType='profile_solar'
+#demandType='profile_solar'
+demandType=args.profile
 for fed in results:
     if fed==federate_name:
         continue
@@ -161,7 +182,8 @@ for fed in feds:
 
 if low_fed is not None:
     print (f"the winner is Fed {low_fed.name} total cost=${low_fed_cost}")
-h.helicsBrokerDisconnect(broker)
+if args.autobroker:
+    h.helicsBrokerDisconnect(broker)
 
 time= list(range(24))
 
