@@ -12,6 +12,10 @@ If you are new to HELICS, the important thing to know is this:
 - Your strategy lives in one Python method: `compute_demand()`.
 - The rest of the code is mostly communication and plotting.
 
+For a deeper walkthrough of the price pattern and the behavior of the example
+houses, see
+[house_strategy_tutorial.md](/c:/CodeProjects/HELICS-Examples/python/market_game/house_strategy_tutorial.md).
+
 ## What To Edit
 
 Start from [house_template.py](/c:/CodeProjects/HELICS-Examples/python/market_game/house_template.py).
