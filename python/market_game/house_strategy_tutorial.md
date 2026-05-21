@@ -7,6 +7,26 @@ If you want the quick "how do I edit a house?" guide, start with
 [market_game.md](/c:/CodeProjects/HELICS-Examples/python/market_game/market_game.md).
 This document goes deeper and is meant to help players build intuition.
 
+The basic local run instructions live in
+[market_game.md](/c:/CodeProjects/HELICS-Examples/python/market_game/market_game.md),
+and this tutorial assumes that same launcher flow.
+
+## Reproducing The Example Run
+
+From [python/market_game](/c:/CodeProjects/HELICS-Examples/python/market_game):
+
+```powershell
+python run_neighborhood.py houses
+helics run --path=houses.json
+```
+
+That generated runner:
+
+- starts an explicit HELICS broker on `localhost:23404`
+- launches the example `*_house.py` files from `houses/`
+- launches the market maker against the same broker
+- adds `--no-plot` so the run exits cleanly after the 24-hour simulation
+
 ## Big Picture
 
 Each house receives:

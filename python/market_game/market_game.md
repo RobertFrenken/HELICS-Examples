@@ -12,8 +12,8 @@ If you are new to HELICS, the important thing to know is this:
 - Your strategy lives in one Python method: `compute_demand()`.
 - The rest of the code is mostly communication and plotting.
 
-For a deeper walkthrough of the price pattern and the behavior of the example
-houses, see
+For a deeper walkthrough of the price pattern, the example house behaviors, and
+the verified example run results, see
 [house_strategy_tutorial.md](/c:/CodeProjects/HELICS-Examples/python/market_game/house_strategy_tutorial.md).
 
 ## What To Edit
@@ -28,6 +28,10 @@ The usual workflow is:
 
 You can use [house_test.py](/c:/CodeProjects/HELICS-Examples/python/market_game/houses/house_test.py)
 as a simple example.
+
+`house_test.py` is meant as a starter example to read and copy, but it is not
+picked up by `run_neighborhood.py` with the default settings because its file
+name does not end in `_house.py`.
 
 There is also [full_cycle_house.py](/c:/CodeProjects/HELICS-Examples/python/market_game/houses/full_cycle_house.py),
 which ignores price and simply charges the battery to full, then discharges it
@@ -160,7 +164,25 @@ python run_neighborhood.py houses
 helics run --path=houses.json
 ```
 
-This launches the market maker plus every matching house file in `houses/`.
+This launches:
+
+- an explicit HELICS broker on `localhost:23404`
+- every matching house file in `houses/`
+- the market maker joined to that same broker
+
+The generated runner also adds `--no-plot`, so automated runs finish cleanly
+without waiting on matplotlib windows.
+
+If you want to include `house_test.py` without renaming it, generate the runner
+with a broader pattern:
+
+```powershell
+python run_neighborhood.py houses --pattern "*house*.py"
+```
+
+For a strategy-focused walkthrough of what those example houses actually do in a
+run, including hourly loads and costs, see
+[house_strategy_tutorial.md](/c:/CodeProjects/HELICS-Examples/python/market_game/house_strategy_tutorial.md).
 
 ## Files In This Example
 
