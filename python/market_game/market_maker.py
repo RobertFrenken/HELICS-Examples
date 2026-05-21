@@ -62,7 +62,9 @@ def update_demand(type:str,fed:SubFed):
    
 parser = argparse.ArgumentParser(description="market maker federate commands")
 parser.add_argument("--auto", action="store_true", default=False, help="run in auto mode")
-parser.add_argument("--autobroker", action="store_true", default=True, help="enable local broker")
+parser.add_argument("--autobroker", action="store_true", default=False, help="enable local broker")
+parser.add_argument("--broker", type=str, default="localhost", help="address of the broker")
+parser.add_argument("--no-plot", action="store_true", default=False, help="skip showing plots at the end")
 parser.add_argument("--profile", type=str, default="profile1", help="type of load profile to use: flat, spike, dspike, random, profile1, profile_solar")
 
 args = parser.parse_args()
@@ -71,7 +73,7 @@ args = parser.parse_args()
 fedinfo = h.helicsCreateFederateInfo()
 h.helicsFederateInfoSetCoreType(fedinfo,h.HELICS_CORE_TYPE_ZMQ_SS)
 #depending on the setup this will need to be modified
-h.helicsFederateInfoSetBroker(fedinfo,"localhost")
+h.helicsFederateInfoSetBroker(fedinfo,args.broker)
 
 h.helicsFederateInfoSetTimeProperty(fedinfo, h.helics_property_time_period, 1.0)
 h.helicsFederateInfoSetFlagOption(fedinfo,h.HELICS_FLAG_WAIT_FOR_CURRENT_TIME_UPDATE,True)
@@ -127,7 +129,7 @@ demandType=args.profile
 for fed in results:
     if fed==federate_name:
         continue
-    print(f"fed {index}:{fed}")
+    print(f"fed {len(feds)}:{fed}")
     sf=SubFed(name=fed)
     if demandType !='flat':
         update_demand(demandType,sf)
@@ -199,4 +201,5 @@ axis[1].plot(time, cprice)
 axis[1].set_title("prices")
 
 # Combine all the operations and display
-plt.show()
+if not args.no_plot:
+    plt.show()
